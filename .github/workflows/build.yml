@@ -1,4 +1,44 @@
 
+name: Build JARVIS Gemini APK
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Install Android SDK
+        run: |
+          SDKMANAGER=$(find "$ANDROID_HOME" -name sdkmanager -type f | head -n 1)
+          yes | "$SDKMANAGER" --licenses || true
+          "$SDKMANAGER" --install "platforms;android-35" "build-tools;35.0.0"
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.9'
+
+      - name: Unpack Gemini project
+        run: |
+          unzip -q JARVIS_Gemini_Android_Projekt.zip -d unpack
+
       - name: Update Gemini model
         run: |
           python3 - <<'PY'
@@ -6,6 +46,51 @@
 
           p = Path("unpack/JARVIS_Gemini_Android/app/src/main/java/de/dirk/jarvis/MainActivity.kt")
           s = p.read_text()
-          s = s.replace("gemini-2.5-flash", "gemini-3.8-flash")
-          p.write_text(s)
+
+          old = "gemini-2.5-flash"
+          new = "gemini-3.8-flash"
+
+          if old not in s:
+              raise SystemExit("Altes Gemini-Modell nicht gefunden. Build abgebrochen.")
+
+          p.write_text(s.replace(old, new))
+          print("Gemini-Modell erfolgreich aktualisiert.")
           PY
+
+      - name: Fix Java and Kotlin targets
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          p = Path("unpack/JARVIS_Gemini_Android/app/build.gradle.kts")
+          s = p.read_text()
+
+          old = "    buildFeatures { compose = true }\n}"
+          new = """    compileOptions {
+              sourceCompatibility = JavaVersion.VERSION_17
+              targetCompatibility = JavaVersion.VERSION_17
+          }
+          kotlinOptions {
+              jvmTarget = "17"
+          }
+          buildFeatures { compose = true }
+          }"""
+
+          if old not in s:
+              raise SystemExit("Java/Kotlin-Konfiguration nicht gefunden.")
+
+          p.write_text(s.replace(old, new, 1))
+          print("Java- und Kotlin-Ziele auf Version 17 gesetzt.")
+          PY
+
+      - name: Build Gemini APK
+        run: |
+          cd unpack/JARVIS_Gemini_Android
+          gradle --no-daemon assembleDebug
+
+      - name: Upload Gemini APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: JARVIS-GEMINI-APK
+          path: unpack/JARVIS_Gemini_Android/app/build/outputs/apk/debug/app-debug.apk
+          retention-days: 14
