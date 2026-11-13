@@ -40,7 +40,7 @@ jobs:
             exit 1
           fi
 
-          chmod +x "$SDKMANAGER"
+          echo "SDK-Manager gefunden: $SDKMANAGER"
 
           yes | "$SDKMANAGER" --licenses || true
 
