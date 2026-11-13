@@ -56,9 +56,9 @@ jobs:
       - name: Unpack Gemini project
         shell: bash
         run: |
-          ZIP_FILE=$(find . -maxdepth 1 -name "*.zip" | head -n 1)
+          ZIP_FILE=$(find . -maxdepth 1 -name "*Gemini*.zip" | head -n 1)
           if [ -z "$ZIP_FILE" ]; then
-            echo "FEHLER: Keine ZIP-Datei im Hauptverzeichnis gefunden!"
+            echo "FEHLER: Keine Gemini-ZIP-Datei im Hauptverzeichnis gefunden!"
             exit 1
           fi
           echo "Entpacke $ZIP_FILE..."
