@@ -4,7 +4,8 @@ name: Build JARVIS Gemini APK
 on:
   workflow_dispatch:
   push:
-    branches: ["main"]
+    branches:
+      - main
 
 permissions:
   contents: read
@@ -12,6 +13,7 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -25,16 +27,50 @@ jobs:
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
 
+      - name: Install Android SDK packages
+        run: |
+          sdkmanager --install \
+            "platform-tools" \
+            "platforms;android-35" \
+            "build-tools;35.0.0"
+
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.9'
 
-      - name: Install Android SDK packages
-        run: sdkmanager "platforms;android-35" "build-tools;35.0.0"
-
       - name: Unpack Gemini project
-        run: unzip -q JARVIS_Gemini_Android_Projekt.zip -d unpack
+        run: |
+          unzip -q JARVIS_Gemini_Android_Projekt.zip -d unpack
+          test -d unpack/JARVIS_Gemini_Android
+
+      - name: Fix Java and Kotlin targets
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+
+          p = Path("unpack/JARVIS_Gemini_Android/app/build.gradle.kts")
+          if not p.exists():
+              raise SystemExit("app/build.gradle.kts wurde nicht gefunden")
+
+          s = p.read_text()
+
+          s = re.sub(
+              r'JavaVersion\.VERSION_1_8',
+              'JavaVersion.VERSION_17',
+              s
+          )
+
+          s = re.sub(
+              r'jvmTarget\s*=\s*"1\.8"',
+              'jvmTarget = "17"',
+              s
+          )
+
+          p.write_text(s)
+          print("Java- und Kotlin-Ziele geprüft.")
+          PY
 
       - name: Build APK
         run: |
