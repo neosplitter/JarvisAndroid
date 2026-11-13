@@ -88,13 +88,23 @@ jobs:
               )
           p.write_text(s)
 
-          # 2. Gemini-Modell in MainActivity.kt auf gemini-2.5-flash setzen
+          # 2. Gezielt nur den Modell-String in MainActivity.kt anpassen
           kt = Path("unpack/JARVIS_Gemini_Android/app/src/main/java/de/dirk/jarvis/MainActivity.kt")
           if kt.exists():
               code = kt.read_text()
-              code = re.sub(r'gemini-[0-9a-zA-Z\.\-]+', 'gemini-2.5-flash', code)
+              for line in code.splitlines():
+                  if "gemini" in line.lower() or "generateContent" in line:
+                      print("VORHER:", line.strip())
+
+              # Ersetzt nur Modellnamen wie "gemini-1.5-pro", "gemini-2.5-pro", "gemini-2.0-flash-lite" etc.
+              code = re.sub(r'gemini-(1\.5|2\.0|2\.5|3\.0)-[a-zA-Z0-9\-\.]+', 'gemini-2.5-flash', code)
+              # Falls v1beta statt v1 genutzt werden muss, sicherstellen:
+              code = code.replace('/v1/models/', '/v1beta/models/')
+
               kt.write_text(code)
-              print("Modell in MainActivity.kt auf gemini-2.5-flash aktualisiert.")
+              for line in code.splitlines():
+                  if "gemini" in line.lower() or "generateContent" in line:
+                      print("NACHHER:", line.strip())
           PY
 
       - name: Build APK
