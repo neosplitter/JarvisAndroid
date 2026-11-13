@@ -19,6 +19,26 @@ jobs:
       - name: Unpack project
         run: unzip -q JARVIS_Android_ChatGPT_Handoff.zip -d unpack
 
+      - name: Fix Java and Kotlin targets
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path("unpack/JARVIS_Android/app/build.gradle.kts")
+          s = p.read_text()
+          s = s.replace(
+              "    buildFeatures { compose = true }",
+              """    compileOptions {
+                  sourceCompatibility = JavaVersion.VERSION_17
+                  targetCompatibility = JavaVersion.VERSION_17
+              }
+              kotlinOptions {
+                  jvmTarget = "17"
+              }
+              buildFeatures { compose = true }"""
+          )
+          p.write_text(s)
+          PY
+
       - name: Set up Java
         uses: actions/setup-java@v4
         with:
@@ -32,17 +52,11 @@ jobs:
 
       - name: Find Android SDK Manager
         run: |
-          echo "ANDROID_HOME=$ANDROID_HOME"
           SDKMANAGER=$(find "$ANDROID_HOME" -name sdkmanager -type f | head -n 1)
-          if [ -z "$SDKMANAGER" ]; then
-            echo "sdkmanager wurde nicht gefunden"
-            exit 1
-          fi
           echo "SDKMANAGER=$SDKMANAGER" >> "$GITHUB_ENV"
 
-      - name: Install Android SDK packages
+      - name: Install Android SDK
         run: |
-          yes | "$SDKMANAGER" --sdk_root="$ANDROID_HOME" --licenses || true
           "$SDKMANAGER" --sdk_root="$ANDROID_HOME" "platforms;android-35" "build-tools;35.0.0"
 
       - name: Build APK
