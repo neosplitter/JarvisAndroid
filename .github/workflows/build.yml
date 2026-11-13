@@ -25,9 +25,7 @@ jobs:
 
       - name: Install Android SDK
         run: |
-          export ANDROID_HOME="${ANDROID_HOME:-/usr/local/lib/android/sdk}"
           SDKMANAGER=$(find "$ANDROID_HOME" -name sdkmanager -type f | head -n 1)
-          echo "SDK Manager: $SDKMANAGER"
           yes | "$SDKMANAGER" --licenses || true
           "$SDKMANAGER" --install "platforms;android-35" "build-tools;35.0.0"
 
@@ -39,6 +37,30 @@ jobs:
       - name: Unpack Gemini project
         run: |
           unzip -q JARVIS_Gemini_Android_Projekt.zip -d unpack
+
+      - name: Fix Java and Kotlin targets
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          p = Path("unpack/JARVIS_Gemini_Android/app/build.gradle.kts")
+          s = p.read_text()
+
+          old = "    buildFeatures { compose = true }\n}"
+          new = """    compileOptions {
+              sourceCompatibility = JavaVersion.VERSION_17
+              targetCompatibility = JavaVersion.VERSION_17
+          }
+          kotlinOptions {
+              jvmTarget = "17"
+          }
+          buildFeatures { compose = true }
+          }"""
+
+          if old not in s:
+              raise SystemExit("Android-Konfiguration nicht gefunden")
+          p.write_text(s.replace(old, new, 1))
+          PY
 
       - name: Build Gemini APK
         run: |
