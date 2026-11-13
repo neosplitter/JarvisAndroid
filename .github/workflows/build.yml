@@ -1,4 +1,3 @@
-
 name: Build JARVIS Gemini APK
 
 on:
@@ -55,8 +54,15 @@ jobs:
           gradle-version: '8.9'
 
       - name: Unpack Gemini project
+        shell: bash
         run: |
-          unzip -q JARVIS_Gemini_Android_Projekt.zip -d unpack
+          ZIP_FILE=$(find . -maxdepth 1 -name "*.zip" | head -n 1)
+          if [ -z "$ZIP_FILE" ]; then
+            echo "FEHLER: Keine ZIP-Datei im Hauptverzeichnis gefunden!"
+            exit 1
+          fi
+          echo "Entpacke $ZIP_FILE..."
+          unzip -q "$ZIP_FILE" -d unpack
           test -d unpack/JARVIS_Gemini_Android
 
       - name: Fix Java and Kotlin targets
